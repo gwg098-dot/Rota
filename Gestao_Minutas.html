@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gestão de Minutas — TI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --accent: #cc0000;
+    --accent-light: rgba(204,0,0,0.08);
+    --bg: #f2f2f5;
+    --surface: #ffffff;
+    --surface2: #f7f7fa;
+    --border: #e0e0e6;
+    --text: #1a1a2e;
+    --text2: #5a5a72;
+    --radius: 14px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+    --green: #0a6640;
+    --green-bg: #d1e7dd;
+    --yellow: #856404;
+    --yellow-bg: #fff3cd;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px 48px; }
+
+  /* HEADER */
+  .header { max-width: 1000px; margin: 0 auto 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-circle { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo-circle svg { width: 24px; height: 24px; fill: #fff; }
+  .header-text h1 { font-size: 20px; font-weight: 700; }
+  .header-text p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .btn-nova { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: var(--accent); color: #fff; border: none; border-radius: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; text-decoration: none; transition: background .18s; white-space: nowrap; }
+  .btn-nova:hover { background: #a80000; }
+
+  /* MAIN */
+  .main { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* CARDS STATS */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 20px; }
+  .stat-card .label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text2); margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; }
+  .stat-card.total .value { color: var(--text); }
+  .stat-card.pendente .value { color: var(--yellow); }
+  .stat-card.assinado .value { color: var(--green); }
+
+  /* FILTROS */
+  .filters { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; }
+  .search-wrap input { width: 100%; padding: 9px 12px 9px 36px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color .18s; }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap .ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
+  .filter-btns { display: flex; gap: 8px; }
+  .filter-btn { padding: 9px 16px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--surface2); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--text2); transition: all .18s; }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--text); }
+  .btn-refresh { padding: 9px 14px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 16px; transition: all .18s; }
+  .btn-refresh:hover { border-color: var(--accent); }
+
+  /* TABELA */
+  .table-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  thead tr { background: var(--surface2); }
+  th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; border-bottom: 1.5px solid var(--border); }
+  td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* BADGE */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .badge.pendente { background: var(--yellow-bg); color: var(--yellow); }
+  .badge.assinado { background: var(--green-bg); color: var(--green); }
+
+  /* ID ROTA */
+  .id-rota { font-family: monospace; font-size: 12px; font-weight: 700; color: var(--text); background: var(--surface2); padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
+
+  /* AÇÕES */
+  .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-acao { padding: 6px 12px; border-radius: 7px; border: 1.5px solid var(--border); background: var(--surface2); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; color: var(--text2); transition: all .15s; white-space: nowrap; }
+  .btn-acao:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .btn-acao.link { border-color: #1a7acc; color: #1a7acc; background: rgba(26,122,204,0.06); }
+  .btn-acao.link:hover { background: rgba(26,122,204,0.14); }
+  .btn-acao.pdf { border-color: var(--green); color: var(--green); background: rgba(10,102,64,0.06); }
+  .btn-acao.pdf:hover { background: rgba(10,102,64,0.14); }
+
+  /* UNIDADE truncada */
+  .unid { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* VAZIO */
+  .empty { text-align: center; padding: 48px 24px; color: var(--text2); }
+  .empty .ico { font-size: 40px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; font-weight: 600; }
+  .empty span { font-size: 13px; }
+
+  /* LOADING SPINNER */
+  .spinner-wrap { text-align: center; padding: 40px; }
+  .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; border-radius: 10px; padding: 12px 22px; font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9999; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+
+  /* MODAL DETALHES */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 8000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: var(--surface); border-radius: 16px; padding: 24px; max-width: 480px; width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-field { margin-bottom: 10px; }
+  .modal-field label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; display: block; margin-bottom: 3px; }
+  .modal-field .val { font-size: 13px; color: var(--text); background: var(--surface2); border-radius: 7px; padding: 7px 10px; }
+  .modal-close { width: 100%; margin-top: 16px; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 9px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 14px; }
+
+  .btn-del {
+    background: none; border: 1.5px solid var(--border); border-radius: 7px;
+    padding: 6px 9px; cursor: pointer; font-size: 14px; transition: all .15s;
+    color: var(--text2);
+  }
+  .btn-del:hover { background: #ffe5e5; border-color: var(--accent); }
+
+  /* MODAL CONFIRMAÇÃO */
+  .confirm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .confirm-box { background: var(--surface); border-radius: 14px; padding: 24px; max-width: 360px; width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+  .confirm-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .confirm-box p { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .confirm-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .confirm-btns button { padding: 11px; border-radius: 9px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 14px; transition: all .15s; }
+  .btn-cancelar { background: var(--surface2); border: 1.5px solid var(--border); color: var(--text2); }
+  .btn-cancelar:hover { border-color: var(--accent); color: var(--text); }
+  .btn-confirmar-del { background: var(--accent); border: none; color: #fff; }
+  .btn-confirmar-del:hover { background: #a80000; }
+
+  /* MODAL EDIÇÃO */
+  .edit-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 8500; display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
+  .edit-modal { background: var(--surface); border-radius: 16px; padding: 24px; width: 100%; max-width: 700px; box-shadow: 0 8px 40px rgba(0,0,0,0.2); margin: auto; }
+  .edit-modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .edit-modal .edit-sub { font-size: 12px; color: var(--text2); margin-bottom: 20px; font-family: monospace; }
+  .edit-section { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); margin: 16px 0 10px; }
+  .edit-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .edit-grid3 { display: grid; grid-template-columns: 1fr 2fr 1.5fr; gap: 10px; margin-bottom: 10px; }
+  .edit-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .edit-field label { font-size: 11px; font-weight: 600; color: var(--text2); }
+  .edit-field input, .edit-field select { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 11px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); outline: none; transition: border-color .18s; width: 100%; }
+  .edit-field input:focus, .edit-field select:focus { border-color: var(--accent); }
+  .edit-sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  /* ITENS EDIÇÃO */
+  .edit-item { display: grid; grid-template-columns: 1fr 1.5fr 1fr 60px 100px 32px; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .edit-item input { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 7px; padding: 7px 9px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; width: 100%; transition: border-color .18s; }
+  .edit-item input:focus { border-color: var(--accent); }
+  .edit-item input[readonly] { background: #ececf0; color: var(--text2); cursor: default; }
+  .edit-item-header { display: grid; grid-template-columns: 1fr 1.5fr 1fr 60px 100px 32px; gap: 6px; padding-bottom: 6px; border-bottom: 1.5px solid var(--border); margin-bottom: 8px; }
+  .edit-item-header span { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+  .btn-del-item { background: none; border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; padding: 5px 7px; transition: all .15s; color: var(--text2); }
+  .btn-del-item:hover { background: #ffe5e5; border-color: var(--accent); }
+  .btn-add-item-edit { background: none; border: 1.5px dashed var(--border); border-radius: 8px; padding: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text2); width: 100%; transition: all .18s; margin-top: 4px; font-family: 'DM Sans', sans-serif; }
+  .btn-add-item-edit:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+  /* BTNS MODAL */
+  .edit-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+  .btn-salvar { padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: 9px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 14px; transition: background .18s; }
+  .btn-salvar:hover { background: #a80000; }
+  .btn-fechar-edit { padding: 12px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 9px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 14px; color: var(--text2); transition: all .18s; }
+  .btn-fechar-edit:hover { border-color: var(--accent); color: var(--text); }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stats .stat-card:last-child { grid-column: 1 / -1; }
+    .filter-btns { width: 100%; }
+    .filter-btn { flex: 1; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-circle">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+    </div>
+    <div class="header-text">
+      <h1>Gestão de Minutas</h1>
+      <p>Grupo Fleury · TI End User</p>
+    </div>
+  </div>
+  <a href="Gerador_de_Minutas.html" class="btn-nova">+ Nova Minuta</a>
+</div>
+
+<div class="main">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card total">
+      <div class="label">Total</div>
+      <div class="value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card pendente">
+      <div class="label">⏳ Pendentes</div>
+      <div class="value" id="stat-pendente">—</div>
+    </div>
+    <div class="stat-card assinado">
+      <div class="label">✅ Assinadas</div>
+      <div class="value" id="stat-assinado">—</div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filters">
+    <div class="search-wrap">
+      <span class="ico">🔍</span>
+      <input type="text" id="search" placeholder="Buscar por ID, unidade, responsável..." oninput="renderTabela()"/>
+    </div>
+    <div class="filter-btns">
+      <button class="filter-btn active" id="f-todos"    onclick="setFiltro('todos')">Todos</button>
+      <button class="filter-btn"        id="f-pendente" onclick="setFiltro('pendente')">⏳ Pendentes</button>
+      <button class="filter-btn"        id="f-assinado" onclick="setFiltro('assinado')">✅ Assinadas</button>
+    </div>
+    <button class="btn-refresh" onclick="carregar()" title="Atualizar">🔄</button>
+  </div>
+
+  <!-- TABELA -->
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID Rota</th>
+            <th>Tipo</th>
+            <th>Remetente</th>
+            <th>Destinatário</th>
+            <th>Criado em</th>
+            <th>Status</th>
+            <th>Ações</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7"><div class="spinner-wrap"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://ipljdqgzzxtefiziptis.supabase.co';
+const SUPA_KEY = 'sb_publishable_yilYz_KyV-62HueBsPNvOA_cRre6Qda';
+const BASE_URL = window.location.href.replace('Gestao_Minutas.html', '').replace(/\/$/, '');
+
+let todas = [];
+let filtroAtual = 'todos';
+
+// ── CARREGAR ──
+async function carregar() {
+  document.getElementById('tbody').innerHTML =
+    '<tr><td colspan="7"><div class="spinner-wrap"><div class="spinner"></div></div></td></tr>';
+  try {
+    const r = await fetch(
+      `${SUPA_URL}/rest/v1/minutas?select=id,tipo,status,created_at,signed_at,rem_unidade,dest_unidade,encaminhado_por,solicitado_por,recebedor&order=created_at.desc`,
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+    );
+    if (!r.ok) throw new Error(await r.text());
+    todas = await r.json();
+    atualizarStats();
+    renderTabela();
+  } catch(e) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="7"><div class="empty"><div class="ico">⚠️</div><p>Erro ao carregar</p><span>${e.message}</span></div></td></tr>`;
+  }
+}
+
+// ── STATS ──
+function atualizarStats() {
+  document.getElementById('stat-total').textContent    = todas.length;
+  document.getElementById('stat-pendente').textContent = todas.filter(m => m.status === 'pendente').length;
+  document.getElementById('stat-assinado').textContent = todas.filter(m => m.status === 'assinado').length;
+}
+
+// ── FILTRO ──
+function setFiltro(f) {
+  filtroAtual = f;
+  ['todos','pendente','assinado'].forEach(k => {
+    document.getElementById(`f-${k}`).classList.toggle('active', k === f);
+  });
+  renderTabela();
+}
+
+// ── RENDER TABELA ──
+function renderTabela() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let lista = todas;
+
+  if (filtroAtual !== 'todos') lista = lista.filter(m => m.status === filtroAtual);
+  if (q) lista = lista.filter(m =>
+    (m.id||'').toLowerCase().includes(q) ||
+    (m.rem_unidade||'').toLowerCase().includes(q) ||
+    (m.dest_unidade||'').toLowerCase().includes(q) ||
+    (m.encaminhado_por||'').toLowerCase().includes(q) ||
+    (m.solicitado_por||'').toLowerCase().includes(q) ||
+    (m.recebedor||'').toLowerCase().includes(q)
+  );
+
+  if (!lista.length) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="7"><div class="empty"><div class="ico">📋</div><p>Nenhuma minuta encontrada</p><span>Tente outro filtro ou crie uma nova minuta</span></div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('tbody').innerHTML = lista.map(m => {
+    const criado = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const badge = m.status === 'assinado'
+      ? `<span class="badge assinado">✅ Assinado</span>`
+      : `<span class="badge pendente">⏳ Pendente</span>`;
+
+    const linkAssinatura = `${BASE_URL}/Assinar_Minuta.html?id=${encodeURIComponent(m.id)}`;
+
+    const idEsc = m.id.replace(/'/g, "\'");
+    const acoes = m.status === 'pendente'
+      ? `<div class="acoes">
+           <button class="btn-acao link" onclick="copiarLink('${linkAssinatura}', this)">📋 Copiar link</button>
+           <button class="btn-acao" onclick="abrirLink('${linkAssinatura}')">↗ Abrir</button>
+           <button class="btn-acao" onclick="abrirEdicao('${idEsc}')">✏ Editar</button>
+         </div>`
+      : `<div class="acoes">
+           <button class="btn-acao pdf" onclick="abrirLink('${linkAssinatura}')">⬇ Ver / PDF</button>
+           <button class="btn-acao link" onclick="copiarLink('${linkAssinatura}', this)">📋 Link</button>
+         </div>`;
+
+    return `<tr>
+      <td><span class="id-rota">${m.id}</span></td>
+      <td>${m.tipo || '—'}</td>
+      <td><div class="unid" title="${m.rem_unidade||''}">${m.rem_unidade || '—'}</div></td>
+      <td><div class="unid" title="${m.dest_unidade||''}">${m.dest_unidade || '—'}</div></td>
+      <td style="white-space:nowrap;color:var(--text2);font-size:12px;">${criado}</td>
+      <td>${badge}</td>
+      <td>${acoes}</td>
+      <td><button class="btn-del" onclick="confirmarExclusao('${m.id}', this)">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── AÇÕES ──
+function copiarLink(link, btn) {
+  navigator.clipboard.writeText(link).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }).catch(() => {
+    // fallback para dispositivos sem clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = link;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function abrirLink(link) {
+  window.open(link, '_blank');
+}
+
+function confirmarExclusao(id, btn) {
+  // Remove modal anterior se existir
+  const old = document.getElementById('confirm-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'confirm-modal';
+  modal.id = 'confirm-modal';
+  modal.innerHTML = `
+    <div class="confirm-box">
+      <h3>Excluir minuta?</h3>
+      <p>ID: <strong>${id}</strong><br>Esta ação não pode ser desfeita.</p>
+      <div class="confirm-btns">
+        <button class="btn-cancelar" onclick="document.getElementById('confirm-modal').remove()">Cancelar</button>
+        <button class="btn-confirmar-del" onclick="deletarMinuta('${id}')">🗑 Excluir</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  // Fechar clicando fora
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function deletarMinuta(id) {
+  const modal = document.getElementById('confirm-modal');
+  if (modal) {
+    const btn = modal.querySelector('.btn-confirmar-del');
+    btn.disabled = true;
+    btn.textContent = 'Excluindo...';
+  }
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/minutas?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Prefer': 'return=minimal'
+      }
+    });
+    if (!r.ok) throw new Error(await r.text());
+    document.getElementById('confirm-modal')?.remove();
+    showToast(`Minuta ${id} excluída`);
+    // Remove da lista local sem recarregar tudo
+    todas = todas.filter(m => m.id !== id);
+    atualizarStats();
+    renderTabela();
+  } catch(e) {
+    document.getElementById('confirm-modal')?.remove();
+    showToast('Erro ao excluir: ' + e.message);
+  }
+}
+
+
+const MATERIAIS_EDIT = [
+  "Adaptador DisplayPort x HDMI","Adaptador HDMI x VGA","Aparelho telefone sem fio",
+  "Bateria CMOS","Bateria de notebook -Dell - 3400","Bateria de notebook -Dell - 3410",
+  "Cabo Console","Cabo de Energia","Cabo de Rede","Cabo de Segurança para Notebook",
+  "Cabo DisplayPort","Cabo DVI","Cabo HDMI","Cabo USB","Cabo VGA",
+  "Carregador de Notebook - DELL 3400 / 3410 / 3420 / 3490","Carregador de Notebook - DELL 3450 / 3470",
+  "Carregador VAIO FE14 / FE15","Desktop Dell Mini","Desktop Dell Optiplex 3000",
+  "Desktop Dell Optiplex 3060","Desktop Dell Optiplex 3080","Desktop Positivo","Desktop Positivo Mini",
+  "HD de desktop","HD Externo","HD notebook","Headset","Hub USB",
+  "Impressora Zebra - GC420","Impressora Zebra - GK420","Impressora Zebra - ZD220","Impressora Zebra - ZD230",
+  "iPhone 11","iPhone 12","iPhone 13","iPhone 13 Pro","iPhone 14","iPhone 15 Pro","iPhone 17 Pro Max","iPhone 17",
+  "Itens de TI","KIT Teclado e Mouse sem fio","Leitor de código de barras - Honeywell",
+  "Leitor de código de barras - ZEBRA","Monitor 17 Polegadas","Monitor 19 Polegadas",
+  "Monitor 22 Polegadas","Monitor 24 Polegadas","Monitor 27 Polegadas",
+  "Motorola E6i","Motorola G35","Motorola G54","Mouse Sem Fio","Mouse USB",
+  "Notebook - DELL 3400","Notebook - DELL 3410","Notebook - DELL 3420","Notebook - DELL 3450 - Novo",
+  "Notebook - DELL 3490","Notebook - Lenovo E470","Notebook - Lenovo E480","Notebook - Positivo VAIO",
+  "Samsung A12","Samsung A13","Samsung A14","Samsung A15","Samsung A25","Samsung A54",
+  "Scanner Canon","Scanner Fujitsu F 1120 / 1125","Scanner Fujitsu F 6130",
+  "Speechmike","SSD 240GB","SSD 480GB","SSD 980GB","SSD NVME 256GB","SSD NVME 512GB",
+  "SWITCH 24 Portas","SWITCH 48 Portas","TABLET","Teclado USB","Teclado Luminoso",
+  "Telefone Analógico","VOIP Cisco","Coletor Zebra","Coletor Symbol","Coletor Motorola"
+];
+
+// ─── EDIÇÃO DE MINUTA ───
+let editItensCount = 0;
+let minutaEmEdicao = null;
+
+async function abrirEdicao(id) {
+  // Busca minuta completa do Supabase (com itens)
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/minutas?id=eq.${encodeURIComponent(id)}&select=*`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    const data = await r.json();
+    if (!data.length) { showToast('Minuta não encontrada'); return; }
+    minutaEmEdicao = data[0];
+    renderModalEdicao(minutaEmEdicao);
+  } catch(e) {
+    showToast('Erro ao carregar: ' + e.message);
+  }
+}
+
+function renderModalEdicao(m) {
+  document.getElementById('edit-modal-bg')?.remove();
+  editItensCount = 0;
+
+  const bg = document.createElement('div');
+  bg.className = 'edit-modal-bg';
+  bg.id = 'edit-modal-bg';
+  bg.innerHTML = `
+    <div class="edit-modal">
+      <h3>✏ Editar Minuta</h3>
+      <div class="edit-sub">${m.id} · ${m.tipo}</div>
+
+      <div class="edit-section">Identificação</div>
+      <div class="edit-grid2">
+        <div class="edit-field"><label>Tipo de Rota</label>
+          <select id="edit-tipo">
+            <option value="Entrega" ${m.tipo==='Entrega'?'selected':''}>Entrega</option>
+            <option value="Devolucao" ${m.tipo==='Devolucao'?'selected':''}>Devolução</option>
+          </select>
+        </div>
+        <div class="edit-field"><label>Transportadora</label><input type="text" id="edit-transp" value="${m.transportadora||''}"/></div>
+      </div>
+      <div class="edit-grid2">
+        <div class="edit-field"><label>Encaminhado por</label><input type="text" id="edit-enc" value="${m.encaminhado_por||''}"/></div>
+        <div class="edit-field"><label>Solicitado por</label><input type="text" id="edit-sol" value="${m.solicitado_por||''}"/></div>
+      </div>
+
+      <hr class="edit-sep"/>
+      <div class="edit-section">Itens</div>
+      <div class="edit-item-header">
+        <span>Chamado</span><span>Produto</span><span>TAG / Serial</span><span>Qtd</span><span>Valor</span><span></span>
+      </div>
+      <div id="edit-itens-container"></div>
+      <button class="btn-add-item-edit" onclick="addEditItem()">+ Adicionar item</button>
+
+      <div class="edit-footer">
+        <button class="btn-fechar-edit" onclick="fecharEdicao()">Cancelar</button>
+        <button class="btn-salvar" onclick="salvarEdicao()">💾 Salvar alterações</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e => { if (e.target === bg) fecharEdicao(); });
+
+  // Popula itens existentes
+  const itens = m.itens || [];
+  if (itens.length === 0) { addEditItem(); }
+  else { itens.forEach(it => addEditItem(it)); }
+}
+
+function addEditItem(it) {
+  editItensCount++;
+  const id = editItensCount;
+  const container = document.getElementById('edit-itens-container');
+  const row = document.createElement('div');
+  row.className = 'edit-item';
+  row.id = `edit-item-${id}`;
+
+  const chamado = it ? (it.chamado||'') : '';
+  const produto  = it ? (it.produto||'') : '';
+  const tag      = it ? (it.tag||'') : '';
+  const qtd      = it ? (it.qtd||'1') : '1';
+  const valor    = it ? (it.valor||'') : '';
+
+  // Monta lista de produtos
+  const opts = MATERIAIS_EDIT.map(n => `<option value="${n}" ${n===produto?'selected':''}>${n}</option>`).join('');
+
+  row.innerHTML = `
+    <input type="text" placeholder="Chamado" id="ei-${id}-cham" value="${chamado}"/>
+    <select id="ei-${id}-prod" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;width:100%;">
+      <option value="">Selecionar...</option>${opts}
+    </select>
+    <input type="text" placeholder="TAG / Serial" id="ei-${id}-tag" value="${tag}"/>
+    <input type="number" min="1" value="${qtd}" id="ei-${id}-qtd"/>
+    <input type="text" placeholder="R$ 0,00" id="ei-${id}-val" value="${valor}"/>
+    <button class="btn-del-item" onclick="document.getElementById('edit-item-${id}').remove()">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function fecharEdicao() {
+  document.getElementById('edit-modal-bg')?.remove();
+  minutaEmEdicao = null;
+  editItensCount = 0;
+}
+
+async function salvarEdicao() {
+  if (!minutaEmEdicao) return;
+
+  // Coleta itens
+  const itens = [];
+  document.querySelectorAll('[id^="edit-item-"]').forEach(row => {
+    const n = row.id.replace('edit-item-','');
+    const prod = document.getElementById(`ei-${n}-prod`)?.value || '';
+    if (!prod) return; // ignora linhas sem produto
+    itens.push({
+      chamado: document.getElementById(`ei-${n}-cham`)?.value || '',
+      produto:  prod,
+      tag:      document.getElementById(`ei-${n}-tag`)?.value || '',
+      qtd:      document.getElementById(`ei-${n}-qtd`)?.value || '1',
+      valor:    document.getElementById(`ei-${n}-val`)?.value || '',
+    });
+  });
+
+  const payload = {
+    tipo:            document.getElementById('edit-tipo').value,
+    transportadora:  document.getElementById('edit-transp').value,
+    encaminhado_por: document.getElementById('edit-enc').value,
+    solicitado_por:  document.getElementById('edit-sol').value,
+    itens:           itens,
+  };
+
+  const btn = document.querySelector('.btn-salvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/minutas?id=eq.${encodeURIComponent(minutaEmEdicao.id)}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(await r.text());
+
+    // Atualiza lista local
+    const idx = todas.findIndex(m => m.id === minutaEmEdicao.id);
+    if (idx !== -1) { todas[idx] = { ...todas[idx], ...payload }; }
+
+    fecharEdicao();
+    renderTabela();
+    showToast('Minuta atualizada com sucesso!');
+  } catch(e) {
+    showToast('Erro ao salvar: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar alterações';
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── AUTO-REFRESH a cada 60 segundos ──
+carregar();
+setInterval(carregar, 60000);
+</script>
+</body>
+</html>
