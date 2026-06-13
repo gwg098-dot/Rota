@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Assinar Minuta — TI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --accent: #cc0000;
+    --accent-light: rgba(204,0,0,0.08);
+    --bg: #f2f2f5;
+    --surface: #ffffff;
+    --surface2: #f7f7fa;
+    --border: #e0e0e6;
+    --text: #1a1a2e;
+    --text2: #5a5a72;
+    --radius: 14px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px 48px; }
+
+  .header { max-width: 860px; margin: 0 auto 28px; display: flex; align-items: center; gap: 16px; }
+  .logo-circle { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo-circle svg { width: 24px; height: 24px; fill: #fff; }
+  .header-text h1 { font-size: 20px; font-weight: 700; }
+  .header-text p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  .main { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+  .card-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .section-sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  /* STATUS BADGE */
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge.pendente { background: #fff3cd; color: #856404; }
+  .badge.assinado { background: #d1e7dd; color: #0a3622; }
+
+  /* CAMPOS READONLY */
+  .ro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .ro-block { background: var(--surface2); border-radius: 10px; border: 1.5px solid var(--border); padding: 14px 16px; }
+  .ro-block-title { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 12px; }
+  .ro-block-title.rem { color: #1a7acc; }
+  .ro-block-title.dest { color: #cc6600; }
+  .ro-field { margin-bottom: 8px; }
+  .ro-field label { font-size: 11px; font-weight: 600; color: var(--text2); display: block; margin-bottom: 2px; }
+  .ro-field .ro-val { background: #ececf0; border: 1.5px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 13px; color: var(--text); min-height: 32px; }
+  .ro-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ro-row3 { display: grid; grid-template-columns: 1fr 2fr 1.5fr; gap: 8px; }
+
+  /* TABELA ITENS */
+  .itens-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .itens-table th { background: #ececf0; padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+  .itens-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .itens-table tr:last-child td { border-bottom: none; }
+  .itens-table tr:nth-child(even) td { background: #fafafa; }
+  .total-row td { font-weight: 700; background: #ececf0 !important; }
+
+  /* CAMPO EDITÁVEL */
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--text2); }
+  .field input { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 9px; padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color .18s; width: 100%; }
+  .field input:focus { border-color: var(--accent); }
+
+  /* ASSINATURA */
+  .sig-wrap { border: 2px dashed var(--border); border-radius: 10px; background: var(--surface2); position: relative; overflow: hidden; touch-action: none; }
+  .sig-wrap canvas { display: block; width: 100%; cursor: crosshair; }
+  .sig-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text2); pointer-events: none; transition: opacity .2s; }
+  .btn-clear { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text2); font-family: 'DM Sans', sans-serif; transition: all .18s; margin-top: 8px; }
+  .btn-clear:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* BOTÃO */
+  .btn-assinar { width: 100%; padding: 15px; background: var(--accent); color: #fff; border: none; border-radius: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; transition: background .18s, transform .1s; box-shadow: 0 4px 18px rgba(204,0,0,0.25); }
+  .btn-assinar:hover { background: #a80000; }
+  .btn-assinar:active { transform: scale(.98); }
+  .btn-assinar:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+
+  /* JÁ ASSINADO */
+  .assinado-box { text-align: center; padding: 32px 24px; }
+  .assinado-box .check { font-size: 48px; margin-bottom: 12px; }
+  .assinado-box h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .assinado-box p { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
+
+  /* LOADING */
+  #loading { position: fixed; inset: 0; background: rgba(242,242,245,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 999; }
+  #loading .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { font-size: 14px; font-weight: 600; color: var(--text2); }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; border-radius: 10px; padding: 12px 22px; font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9999; }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .ro-grid { grid-template-columns: 1fr; }
+    .ro-row2 { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Carregando minuta...</p>
+</div>
+
+<div class="header" style="display:none" id="page-header">
+  <div class="logo-circle">
+    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 14H5V7h14v11zM7 9h10v2H7zm0 4h7v2H7z"/></svg>
+  </div>
+  <div class="header-text">
+    <h1>Assinatura de Minuta</h1>
+    <p id="header-sub">Grupo Fleury · TI End User</p>
+  </div>
+</div>
+
+<div class="main" id="page-main" style="display:none"></div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://ipljdqgzzxtefiziptis.supabase.co';
+const SUPA_KEY = 'sb_publishable_yilYz_KyV-62HueBsPNvOA_cRre6Qda';
+
+let minuta = null;
+let sigCanvas, sigCtx, signing = false, hasSig = false;
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  if (!id) { mostrarErro('Link inválido — ID não encontrado.'); return; }
+  await carregarMinuta(id);
+});
+
+async function carregarMinuta(id) {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/minutas?id=eq.${encodeURIComponent(id)}&select=*`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    const data = await r.json();
+    if (!data.length) { mostrarErro('Minuta não encontrada.'); return; }
+    minuta = data[0];
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('page-header').style.display = 'flex';
+    document.getElementById('page-main').style.display = 'flex';
+    document.getElementById('header-sub').textContent = `${minuta.id} · ${minuta.tipo}`;
+    renderMinuta();
+  } catch(e) {
+    mostrarErro('Erro ao carregar: ' + e.message);
+  }
+}
+
+function renderMinuta() {
+  const main = document.getElementById('page-main');
+  main.innerHTML = '';
+
+  // Se já assinado
+  if (minuta.status === 'assinado') {
+    main.innerHTML = `
+      <div class="card">
+        <div class="assinado-box">
+          <div class="check">✅</div>
+          <h2>Minuta já assinada</h2>
+          <p>Esta minuta foi assinada em ${minuta.signed_at ? new Date(minuta.signed_at).toLocaleString('pt-BR') : '—'}<br>
+          Recebedor: <strong>${minuta.recebedor || '—'}</strong></p>
+          <button class="btn-assinar" onclick="gerarPDF()" style="max-width:260px;margin:0 auto;">⬇ Baixar PDF</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Status + ID
+  main.innerHTML += `
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);margin-bottom:4px;">ID Rota</div>
+        <div style="font-size:18px;font-weight:700;font-family:monospace;">${minuta.id}</div>
+      </div>
+      <div>
+        <span class="badge ${minuta.status}">${minuta.status === 'pendente' ? '⏳ Pendente' : '✅ Assinado'}</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px;text-align:right;">${minuta.tipo}</div>
+      </div>
+    </div>`;
+
+  // Remetente / Destinatário
+  main.innerHTML += `
+    <div class="card">
+      <div class="card-title">Remetente e Destinatário</div>
+      <div class="ro-grid">
+        <div class="ro-block">
+          <div class="ro-block-title rem">Remetente</div>
+          ${roField('Unidade', minuta.rem_unidade)}
+          ${roField('Endereço', minuta.rem_end)}
+          <div class="ro-row2">${roField('Bairro', minuta.rem_bairro)}${roField('Cidade', minuta.rem_cidade)}</div>
+          <div class="ro-row3">${roField('UF', minuta.rem_uf)}${roField('CEP', minuta.rem_cep)}${roField('C. Custo', minuta.rem_cc)}</div>
+          ${roField('CNPJ', minuta.rem_cnpj)}
+        </div>
+        <div class="ro-block">
+          <div class="ro-block-title dest">Destinatário</div>
+          ${roField('Unidade', minuta.dest_unidade)}
+          ${roField('Endereço', minuta.dest_end)}
+          <div class="ro-row2">${roField('Bairro', minuta.dest_bairro)}${roField('Cidade', minuta.dest_cidade)}</div>
+          <div class="ro-row3">${roField('UF', minuta.dest_uf)}${roField('CEP', minuta.dest_cep)}${roField('C. Custo', minuta.dest_cc)}</div>
+          ${roField('CNPJ', minuta.dest_cnpj)}
+        </div>
+      </div>
+    </div>`;
+
+  // Itens
+  const itens = minuta.itens || [];
+  let totalVal = 0;
+  let rowsHtml = itens.map((it, idx) => {
+    const val = parseFloat((it.valor || '').replace(/[^\d,]/g,'').replace(',','.')) || 0;
+    const subtotal = val * (parseInt(it.qtd) || 1);
+    totalVal += subtotal;
+    return `<tr>
+      <td>${it.chamado || ''}</td>
+      <td>${it.produto || ''}</td>
+      <td>${it.tag || ''}</td>
+      <td style="text-align:center">${it.qtd || 1}</td>
+      <td style="text-align:right">${it.valor || 'R$ 0,00'}</td>
+    </tr>`;
+  }).join('');
+  rowsHtml += `<tr class="total-row"><td colspan="4" style="text-align:right;font-weight:700;">TOTAL</td><td style="text-align:right">R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`;
+
+  main.innerHTML += `
+    <div class="card">
+      <div class="card-title">Itens</div>
+      <table class="itens-table">
+        <thead><tr><th>Nº Chamado</th><th>Produto</th><th>TAG / Serial</th><th style="text-align:center">Qtd</th><th style="text-align:right">Valor</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+
+  // Transporte
+  main.innerHTML += `
+    <div class="card">
+      <div class="card-title">Transporte</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        ${roField('Transportadora', minuta.transportadora)}
+        ${roField('Tipo do Produto', minuta.tipo_produto)}
+        ${roField('Encaminhado por', minuta.encaminhado_por)}
+        ${roField('Solicitado por', minuta.solicitado_por)}
+      </div>
+    </div>`;
+
+  // Assinatura
+  main.innerHTML += `
+    <div class="card" id="card-assinatura">
+      <div class="card-title">Confirmação de Recebimento</div>
+      <div class="field">
+        <label>Nome do Recebedor</label>
+        <input type="text" id="recebedor" placeholder="Nome completo de quem está recebendo"/>
+      </div>
+      <div class="field" style="margin-top:4px;">
+        <label>Assinatura</label>
+        <div style="background:var(--accent-light);border:1.5px solid var(--accent);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">📦</span>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">Confirmar recebimento em</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);" id="dest-label">—</div>
+          </div>
+        </div>
+        <div class="sig-wrap" id="sig-wrap">
+          <canvas id="sig-canvas" height="140"></canvas>
+          <div class="sig-hint" id="sig-hint">Assine aqui com o dedo ou mouse</div>
+        </div>
+        <button class="btn-clear" onclick="limparAssinatura()">✕ Limpar assinatura</button>
+      </div>
+    </div>`;
+
+  main.innerHTML += `<button class="btn-assinar" id="btn-confirmar" onclick="confirmarAssinatura()">✅ Confirmar Recebimento e Gerar PDF</button>`;
+
+  // Preencher destinatário
+  const destLbl = document.getElementById('dest-label');
+  if (destLbl) destLbl.textContent = minuta.dest_unidade || '—';
+
+  // Inicializar canvas após render
+  setTimeout(initCanvas, 100);
+}
+
+function roField(label, val) {
+  return `<div class="ro-field"><label>${label}</label><div class="ro-val">${val || ''}</div></div>`;
+}
+
+// ── CANVAS ──
+function initCanvas() {
+  sigCanvas = document.getElementById('sig-canvas');
+  if (!sigCanvas) return;
+  const wrap = document.getElementById('sig-wrap');
+  sigCanvas.width = wrap.offsetWidth;
+  sigCtx = sigCanvas.getContext('2d');
+  sigCtx.strokeStyle = '#1a1a2e';
+  sigCtx.lineWidth = 2;
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+
+  sigCanvas.addEventListener('mousedown',  e => { signing = true; sigCtx.beginPath(); const p = pos(e); sigCtx.moveTo(p.x, p.y); });
+  sigCanvas.addEventListener('mousemove',  e => { if (!signing) return; const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); hasSig = true; document.getElementById('sig-hint').style.opacity = '0'; });
+  sigCanvas.addEventListener('mouseup',    () => { signing = false; });
+  sigCanvas.addEventListener('mouseleave', () => { signing = false; });
+  sigCanvas.addEventListener('touchstart', e => { e.preventDefault(); signing = true; sigCtx.beginPath(); const p = posT(e); sigCtx.moveTo(p.x, p.y); }, { passive: false });
+  sigCanvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!signing) return; const p = posT(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); hasSig = true; document.getElementById('sig-hint').style.opacity = '0'; }, { passive: false });
+  sigCanvas.addEventListener('touchend',   () => { signing = false; });
+}
+
+function pos(e) {
+  const r = sigCanvas.getBoundingClientRect();
+  const scaleX = sigCanvas.width / r.width;
+  const scaleY = sigCanvas.height / r.height;
+  return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+}
+function posT(e) {
+  const t = e.changedTouches[0];
+  return pos(t);
+}
+function limparAssinatura() {
+  if (!sigCtx) return;
+  sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+  hasSig = false;
+  document.getElementById('sig-hint').style.opacity = '1';
+}
+
+// ── CONFIRMAR ──
+async function confirmarAssinatura() {
+  const recebedor = document.getElementById('recebedor').value.trim();
+  if (!recebedor) { showToast('Informe o nome do recebedor'); return; }
+  if (!hasSig)    { showToast('É necessário assinar antes de confirmar'); return; }
+
+  const assinatura = sigCanvas.toDataURL('image/png');
+  const agora = new Date().toISOString();
+  const dataFmt = new Date().toLocaleDateString('pt-BR');
+
+  const btn = document.getElementById('btn-confirmar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/minutas?id=eq.${encodeURIComponent(minuta.id)}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        status: 'assinado',
+        signed_at: agora,
+        assinatura: assinatura,
+        recebedor: recebedor,
+        data_assinatura: dataFmt,
+      })
+    });
+    if (!r.ok) throw new Error(await r.text());
+
+    // Atualiza objeto local
+    minuta.status = 'assinado';
+    minuta.assinatura = assinatura;
+    minuta.recebedor = recebedor;
+    minuta.data_assinatura = dataFmt;
+    minuta.signed_at = agora;
+
+    gerarPDF();
+  } catch(e) {
+    showToast('Erro ao salvar: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '✅ Confirmar Recebimento e Gerar PDF';
+  }
+}
+
+// ── GERAR PDF ──
+function s(str) {
+  if (!str) return '';
+  return str
+    .replace(/[àáâãäå]/gi,'a').replace(/[èéêë]/gi,'e').replace(/[ìíîï]/gi,'i')
+    .replace(/[òóôõö]/gi,'o').replace(/[ùúûü]/gi,'u').replace(/[ç]/gi,'c')
+    .replace(/[ñ]/gi,'n').replace(/[ý]/gi,'y');
+}
+
+function gerarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const PW = 210, ML = 12, MR = 12;
+  const lw = PW - ML - MR;
+  let y = 12;
+
+  const LABEL_H = 4.5, BOX_H = 7, GAP = 2;
+  function fld(label, value, x, fw, cy) {
+    doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(110,110,110);
+    doc.text(s(label), x+1.5, cy+3.5);
+    doc.setDrawColor(215,215,215); doc.setFillColor(248,248,250);
+    doc.roundedRect(x, cy+LABEL_H, fw, BOX_H, 1, 1, 'FD');
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(25,25,25);
+    const maxW = fw-3; let txt = s(value||'');
+    while (txt.length>0 && doc.getTextWidth(txt)>maxW) txt=txt.slice(0,-1);
+    doc.text(txt, x+1.5, cy+LABEL_H+5);
+    return cy+LABEL_H+BOX_H+GAP;
+  }
+
+  // Cabeçalho
+  doc.setFillColor(204,0,0); doc.rect(ML,y,lw,13,'F');
+  doc.setFontSize(15); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('MINUTA', ML+4, y+8.5);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(`TI. END USER  |  ${s(minuta.tipo).toUpperCase()}`, PW-MR-4, y+8.5, {align:'right'});
+  y += 15;
+
+  // ID / Data
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70);
+  doc.text(`ID Rota: ${minuta.id}`, ML, y+4);
+  doc.text(`Data: ${minuta.data_assinatura || new Date().toLocaleDateString('pt-BR')}`, PW-MR, y+4, {align:'right'});
+  y += 7;
+
+  // Remetente / Destinatário
+  const colW = (lw-3)/2, xR=ML, xD=ML+colW+3;
+  const hw=(colW-2)/2, ufW=14, cepW=32, ccW=colW-ufW-cepW-4;
+
+  doc.setFontSize(8); doc.setFont('helvetica','bold');
+  doc.setTextColor(26,122,204); doc.text('REMETENTE', xR, y+4);
+  doc.setTextColor(204,102,0);  doc.text('DESTINATARIO', xD, y+4);
+  y += 6;
+
+  let ay=y;
+  const ay1 = fld('UNIDADE', minuta.rem_unidade, xR, colW, ay);
+               fld('UNIDADE', minuta.dest_unidade, xD, colW, ay);
+  const ay2 = fld('ENDERECO', minuta.rem_end, xR, colW, ay1);
+               fld('ENDERECO', minuta.dest_end, xD, colW, ay1);
+  fld('BAIRRO', minuta.rem_bairro, xR, hw, ay2);
+  fld('CIDADE', minuta.rem_cidade, xR+hw+2, hw, ay2);
+  fld('BAIRRO', minuta.dest_bairro, xD, hw, ay2);
+  const ay3 = fld('CIDADE', minuta.dest_cidade, xD+hw+2, hw, ay2);
+  fld('UF', minuta.rem_uf, xR, ufW, ay3);
+  fld('CEP', minuta.rem_cep, xR+ufW+2, cepW, ay3);
+  fld('C.CUSTO', minuta.rem_cc, xR+ufW+cepW+4, ccW, ay3);
+  fld('UF', minuta.dest_uf, xD, ufW, ay3);
+  fld('CEP', minuta.dest_cep, xD+ufW+2, cepW, ay3);
+  const ay4 = fld('C.CUSTO', minuta.dest_cc, xD+ufW+cepW+4, ccW, ay3);
+  const ay5 = fld('CNPJ', minuta.rem_cnpj, xR, colW, ay4);
+               fld('CNPJ', minuta.dest_cnpj, xD, colW, ay4);
+  y = ay5 + 2;
+
+  // Tabela itens
+  const COLS = [{w:28},{w:72},{w:40},{w:14},{w:32}];
+  const HDRS = ['No Chamado','Produto','TAG / Serial','Qtd','Valor Merc.'];
+  let cx0=ML; const CX=[]; COLS.forEach(c=>{CX.push(cx0);cx0+=c.w;});
+
+  doc.setFillColor(235,235,240); doc.setDrawColor(210,210,215);
+  doc.rect(ML,y,lw,7,'FD');
+  doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(70,70,70);
+  HDRS.forEach((h,i)=>doc.text(s(h),CX[i]+1.5,y+4.5));
+  y+=7;
+
+  const itens = minuta.itens||[];
+  let totalVal=0;
+  itens.forEach((it,idx)=>{
+    const val=parseFloat((it.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+    totalVal+=val*(parseInt(it.qtd)||1);
+    const bg=idx%2===0?[255,255,255]:[249,249,253];
+    doc.setFillColor(...bg); doc.rect(ML,y,lw,6.5,'F');
+    doc.setDrawColor(230,230,235); doc.line(ML,y+6.5,ML+lw,y+6.5);
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(25,25,25);
+    [it.chamado,it.produto,it.tag,it.qtd,it.valor].forEach((v,i)=>{
+      let t=s(v||''); const mw=COLS[i].w-3;
+      while(t.length>0&&doc.getTextWidth(t)>mw)t=t.slice(0,-1);
+      doc.text(t,CX[i]+1.5,y+4.3);
+    });
+    y+=6.5;
+  });
+  doc.setFillColor(235,235,240); doc.rect(ML,y,lw,7.5,'F');
+  doc.setFontSize(8.5); doc.setFont('helvetica','bold'); doc.setTextColor(25,25,25);
+  doc.text('TOTAL', PW-MR-35, y+5);
+  doc.text(`R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}`, PW-MR-1.5, y+5, {align:'right'});
+  y+=10;
+
+  // Transporte
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70);
+  doc.text(`Transportadora: ${s(minuta.transportadora)}`, ML, y+4);
+  doc.text(`Tipo do Produto: ${s(minuta.tipo_produto)}`, PW-MR, y+4, {align:'right'});
+  y+=8;
+
+  // Responsáveis
+  const hw2=(lw-3)/2;
+  fld('ENCAMINHADO POR', minuta.encaminhado_por, ML, hw2, y);
+  fld('SOLICITADO POR',  minuta.solicitado_por,  ML+hw2+3, hw2, y);
+  y+=LABEL_H+BOX_H+GAP+1;
+
+  fld('RECEBEDOR', minuta.recebedor||'', ML, hw2, y);
+  fld('DATA',      minuta.data_assinatura||'', ML+hw2+3, hw2, y);
+  y+=LABEL_H+BOX_H+GAP+1;
+
+  // Assinatura
+  if (minuta.assinatura) {
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(110,110,110);
+    doc.text('ASSINATURA DO RECEBEDOR', ML, y+3);
+    y+=5;
+    doc.setDrawColor(215,215,215); doc.setFillColor(248,248,250);
+    doc.roundedRect(ML, y, 80, 28, 1, 1, 'FD');
+    try {
+      doc.addImage(minuta.assinatura, 'PNG', ML+2, y+2, 76, 24);
+    } catch(e) {}
+    y+=30;
+  }
+
+  // Nota fiscal
+  if (y < 280) {
+    doc.setFontSize(6); doc.setFont('helvetica','italic'); doc.setTextColor(140,140,140);
+    const nota='Isento de emissao de notas fiscais, posto nao ser contribuinte de ICMS com base no Art. 4o, da LC 87/96 (Lei Federal); Art.19, do Decreto Estadual no. 45.490/00 (SP); Art.15, do Decreto Estadual no. 27.427/00 (RJ); Art.16, do Decreto Estadual no. 1.980/07 (PR); Art.36, do Decreto Estadual no. 6.284/97 (BA); Art.15, do Decreto Estadual no. 14.876/91 (PE); Art.08, do Decreto Estadual no. 37.699/97 (RS)';
+    doc.text(doc.splitTextToSize(nota,lw), ML, y+3);
+  }
+
+  doc.save(`Minuta_${minuta.id}_Assinada.pdf`);
+  showToast('PDF gerado com sucesso!');
+
+  // Atualiza tela
+  setTimeout(() => renderMinuta(), 500);
+}
+
+function mostrarErro(msg) {
+  document.getElementById('loading').style.display='none';
+  document.getElementById('page-header').style.display='flex';
+  document.getElementById('page-main').style.display='flex';
+  document.getElementById('page-main').innerHTML=`
+    <div class="card" style="text-align:center;padding:40px 24px;">
+      <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+      <div style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:8px;">Erro</div>
+      <div style="color:var(--text2)">${msg}</div>
+    </div>`;
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
